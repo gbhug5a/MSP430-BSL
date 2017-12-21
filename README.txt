@@ -20,7 +20,7 @@ Additional software files include:
 
 1. Alternate BSL entry code for the G2553 which avoids the
 need for the special signalling pattern on Test and /Reset,
-and which can allow BSL to run with LOCKA set.
+and which can be configured to allow BSL to run with LOCKA set.
 
 2. A recompiled version of TI's BSLDEMO2.exe for the G2553,
 which allows setting the DTR line to the correct polarity
@@ -37,6 +37,10 @@ use by applications.
 5. A new Windows console program that functions as the
 master for the G2231 custom BSL process (the equivalent
 of BSLDEMO.exe).
+
+6. An examnple of using an intermediate jump table for the
+G2553 interrupt vectors, which allows the BSL password to
+remain unchanged for all firmware versions of a project.
 
 The installers for the two G2231 BSL versions also derive
 by successive approximation the missing calibration values
