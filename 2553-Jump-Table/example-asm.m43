@@ -1,0 +1,101 @@
+;Naken Assembler
+
+.msp430
+
+;definitions of selected interrupt vectors - 0xFFE0 - 0xFFFF
+; be sure to provide for all that will ever be used
+
+#define VECTORS_BEGIN       0xFFE0
+#define PORT1_VECTOR        0xFFE4
+#define PORT2_VECTOR        0xFFE6
+#define USI_VECTOR          0xFFE8
+#define ADC10_VECTOR        0xFFEA
+#define TIMERA1_VECTOR      0xFFF0
+#define TIMERA0_VECTOR      0xFFF2
+#define WDT_VECTOR          0xFFF4
+#define RESET_VECTOR        0xFFFE
+
+;BSL security key - prevent mass erase on bad password
+
+.org    0xFFDE
+.dw     0
+
+;interrupt vector table and password
+
+.org    VECTORS_BEGIN
+.dw     0xFFFF,0xFFFF   ;not used, but part of password
+
+.org    PORT1_VECTOR
+.dw     Port1_Table     ;location of jump table entry
+
+.org    PORT2_VECTOR
+.dw     Port2_Table
+
+.org    USI_VECTOR
+.dw     USI_Table
+
+.org    ADC10_VECTOR
+.dw     ADC10_Table
+.dw     0xFFFF,0xFFFF   ;not used
+
+.org    TIMERA1_VECTOR
+.dw     TimerA1_Table
+
+.org    TIMERA0_VECTOR
+.dw     TimerA0_Table
+
+.org    WDT_VECTOR
+.dw     WDT_Table
+.dw     0xFFFF,0xFFFF,0xFFFF,0xFFFF
+
+.org    RESET_VECTOR
+.dw     Reset_Table
+
+
+;intermediate jump table
+
+.org    0xFFA0          ;can be anywhere, but same location for all versions
+
+Port1_Table:    BR      #Port1_Routine
+Port2_Table:    BR      #Port2_Routine
+USI_Table:      BR      #USI_Routine
+ADC10_Table:    BR      #ADC10_Routine
+TimerA1_Table:  BR      #TimerA1_Routine
+TimerA0_Table:  BR      #TimerA0_Routine
+WDT_Table:      BR      #WDT_Routine
+Reset_Table:    BR      #Reset_Routine
+
+;Actual routines
+
+.org    0xC000          ;can be anywhere, can vary among versions
+
+Port1_Routine:
+                   NOP     ;whatever
+                   RETI
+
+Port2_Routine:
+                   NOP     ;whatever
+                   RETI
+
+USI_Routine:
+                   NOP     ;whatever
+                   RETI
+
+ADC10_Routine:
+                   NOP     ;whatever
+                   RETI
+
+TimerA1_Routine:
+                   NOP     ;whatever
+                   RETI
+
+TimerA0_Routine:
+                   NOP     ;whatever
+                   RETI
+
+WDT_Routine:
+                   NOP     ;whatever
+                   RETI
+
+Reset_Routine:
+                   NOP     ;whatever
