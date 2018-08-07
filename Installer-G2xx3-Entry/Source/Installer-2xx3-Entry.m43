@@ -1,0 +1,214 @@
+; Installer-G2xx3-Entry  v3.0
+;
+; This program installs a very small code block into unused space in INFOA which
+; can provide an alternate way to enter the embedded BSL of any G2xx3 device,
+; including the poplular G2553, all of which have BSL version 2.03.  This code
+; eliminates the need for the special signalling pattern on /Reset and Test (the
+; usual way to enter BSL), and makes it possible to enter BSL through a "Warm
+; Start" with LOCKA set, which will protect the INFOA calibration data (and this
+; BSL entry code) during a mass erase. Moreover, a generic USB-to-Serial adapter
+; can be used without having to deal with BSLDEMO's DTR polarity issues.  This
+; is a universal installer for all G2xx3 parts having 1k to 16K of MAIN memory
+;
+; The assembled code (the .hex file) should be flashed to the device, and on the
+; first run thereafter, the entry code will be installed into INFOA and the RESET
+; vector at 0xFFFE will be changed to 0x10C0 - the beginning of this entry code
+; at the start of INFOA. Thereafter, the RESET vector at 0xFFFE in the user's
+; firmware file to be flashed by BSL must always point to 0x10C0.  In addition,
+; the user's application must begin at the beginning of MAIN memory (0xC000 for
+; the G2553, 0xE000 for the G2433, etc.).
+;
+; Even after installation, use of this special entry code is optional. Pointing
+; the RESET vector anywhere other than 0x10C0 will automatically eliminate any
+; involvement of this special entry code.  But it will remain available in INFOA
+; for later use.
+;
+; On each powerup or reset, the code at 0x10C0 will enable the pulldown resistor
+; on P1.5 (the designated RxD pin for BSL V2.03), then check the state of P1.5,
+; then disable the pulldown resistor.  If the pin state was low, the code will
+; jump to MAIN to run the application.	If it was high, that indicates the USB
+; cable is connected and BSL flashing is to be done, so the code jumps to BSL via
+; either the Cold Start vector or a special Warm Start address.
+;
+; The Cold Start vector is the same as that used following the normal /Reset and
+; Test signalling pattern.  The alternate Warm Start entry point will leave LOCKA
+; set, thereby protecting INFOA from a mass erase.  Both Cold and Warm versions
+; of the installer .hex file are included here.  Either file may be flashed using
+; either JTAG or BSL, but note that flashing does not install the entry code.
+; The device must be powered up once after flashing, and it is then that the
+; installation takes place.
+;
+; This code is written for Michael Kohn's NAKEN ASSEMBLER.
+;
+;    https://www.mikekohn.net/micro/naken_asm.php
+;
+; If you wish to make changes, put your revised .m43 and .inc files in the same
+; folder as naken_asm.exe, and run that program in a CMD window.  The new
+; assembled code will be found in out.hex.
+
+
+
+.msp430
+.include	"msp430g2231.inc"			;not a G2xx3 device, but has the defs needed
+
+INFOABASE	equ	0x10C0				;bottom of INFOA
+BSLENTRY	equ	0x10C0				;Reset vector points here
+LowCal		equ	0x10DA				;Calibration data 10DA-10EB
+LowCalLen	equ	18
+HiCal		equ	0x10F6				;Calibration data 10F6-10FF
+HiCalLen	equ	10
+
+LPM4		equ	0xF0				;Low Power Mode - all off
+
+	.org 0xFC00					;smallest MAIN of G2xx3 family
+
+		nop					;make sure this doesn't run again
+		nop
+	bic.w	#GIE,		SR			;turn off interrupts
+	bis.w	#LPM4,		SR			;everything off.
+
+
+PowerUp:       ;;;; this program starts here on power up ;;;;;;;;;;
+
+	mov.w	#0x0280,	SP			;set stack pointer - smallest part
+	mov.w	#WDTPW+WDTHOLD, &WDTCTL 		;stop WDT, set to timer
+	mov.b	#0,		&IFG1			;clear all flags
+
+
+;Set main clock to 8 MHz
+
+	mov.b	&CALDCO_8MHZ,	&DCOCTL 		;Set clock to 8MHz values
+	mov.b	&CALBC1_8MHZ,	&BCSCTL1
+
+Flash:							;Flash the new INFOA
+
+	mov.b	#0xFF,		R10			;Set up RAM copy of InfoA Cal Data
+	mov.w	#0x0200,	R11
+	mov.w	#64,		R12
+
+Fill:
+
+	mov.b	R10,		0(R11)			;Fill low RAM with FF (stack is at high RAM)
+	inc.w	R11
+	dec.w	R12
+	jnz	Fill
+
+	mov.w	#LowCal,			 R10	;Copy INFOA low calibrations to ram
+	mov.w	#0x0200+LowCal-INFOABASE,	 R11
+	mov.w	#LowCalLen,			 R12
+	call	#Copy
+
+	mov.w	#HiCal, 			 R10	;Copy INFOA high calibrations to ram
+	mov.w	#0x0200+HiCal-INFOABASE,	 R11
+	mov.w	#HiCalLen,			 R12
+	call	#Copy
+
+							;Copy lower part of BSL Entry code to ram
+	mov.w	#Part1,		   	R10
+	mov.w	#0x0200,		R11
+	mov.w	#(Part1End-Part1), 	R12
+	call	#Copy
+
+	mov.w	#Part2, 	 	R10		;Copy upper part of BSL Entry code to ram
+	mov.w	#(Part2+0x0200-Part1),	R11
+	mov.w	#(Part2End-Part2), 	R12
+	call	#Copy
+
+FindMain:
+
+	mov.b	&0x0FF0,	R13			;first byte of device number (i.e. - 25)
+	and.b	#7,		R13			;index into MAIN values
+	mov.b	MainPtr(R13),	&0x0219 		;overwrite old nominal value in RAM
+
+
+	mov.w	#FWKEY+LOCKA,	     &FCTL3		;Unlock for writing, toggle LOCKA off
+	mov.w	#FWKEY+FSSEL_1+21,   &FCTL2		;MCLK, Div = 21 (22) = 364 KHz at 8 Mhz
+	mov.w	#FWKEY+ERASE,	     &FCTL1		;Enable Erase mode
+	mov.b	#0,		&INFOABASE		;initiate erase of INFOA with dummy write
+	mov.w	#FWKEY+WRT,	&FCTL1			;switch from Erase to Write
+
+	mov.w	#0x0200,	R10
+	mov.w	#INFOABASE,	R11
+	mov.w	#64,		R12
+	call	#Copy					;copy ram back to INFOA
+
+	mov.w	#FWKEY, 	    &FCTL1		;Turn off Write mode
+	mov.w	#FWKEY+LOCK+LOCKA,  &FCTL3		;Relock all
+
+RES_VEC:						;erase top segment, then
+							;  write reset vector pointing to BSL entry
+
+	mov.w	#FWKEY, 	&FCTL3			;Unlock flash
+	mov.w	#FWKEY+ERASE,	&FCTL1			;Enable Erase mode
+	clr.b	&0xFE00 				;dummy write to start erase
+	mov.w	#FWKEY+WRT,	&FCTL1			;switch from Erase to Write
+
+	mov.w	#BSLENTRY,	&RESET_VECTOR		;write BSL entry point as PU/Reset vector
+	mov.w	#0,		&0xFFDE 		;prevent bad password causing mass erase
+
+	mov.w	#FWKEY, 	&FCTL1			;Turn off Write mode
+	mov.w	#FWKEY+LOCK,	&FCTL3			;Relock flash
+
+
+	bic.w	#GIE,		SR			;turn off interrupts
+	bis.w	#LPM4,		SR			;everything off.
+
+	jmp   $ 					;just in case we get here
+
+Copy:
+
+	mov.b	@R10+,		0(R11)			;Copy INFOA to low RAM (stack is at high RAM)
+	inc.w	R11
+	dec.w	R12
+	jnz	Copy
+	ret
+
+MainPtr:
+
+	.db	0xFE,0xFC,0xF8,0xF0,0xE0,0xC0  ;upper MAIN address for 20xx - 25xx
+
+
+ColdVector	equ	0x0C00		    ; BSL cold start entry vector
+BestWarmStart	equ	0x0C0C		    ; skips changing LOCKA
+BSLPIN		equ	0x20		    ; BSL entry on P1.5 HIGH (Use pulldown)
+MAIN		equ	0xC000		    ; Nominal MAIN beginning - modified per part number
+
+;.org	   0x10C0			     ; BSL bootup code.
+.org	  0xFDC0			    ; image location, but assembles as 0x10C0
+
+Part1:					    ; Reset vector points here
+
+	    mov.b   #0,      &P1OUT	    ; pullDOWN resistor
+	    mov.b   #BSLPIN, &P1REN	    ; enable resistor
+	    bit.b   #BSLPIN, &P1IN		    ; Pin high invokes BSL
+	    mov.b   #0,      &P1REN	    ; restore P1REN - PD resistor disabled
+
+	    jnz	    Part2		    ; Pin high, go to BSL
+
+	    br	    #MAIN		    ; Jump to app if P1.5 low
+
+Part1End:
+					    ; jump over calibration data
+
+;.org	   0x10EC			     ;	to empty space here between ADC10 and DCO cal data
+.org	  0xFDEC			    ; image location
+
+Part2:					    ; No room for both Cold and Warm.  Comment out one.
+
+ColdStart:      ;Comment out this section if using Warm start
+
+	    br	    &ColdVector		    ; enter BSL - indirect address.
+	    .dw	    0xFFFF,0xFFFF,0xFFFF    ; just fill
+
+WarmStart:      ;Comment out this section if using Cold start
+
+;	     mov.w   #FWKEY,  &FCTL3	     ; must clear LOCK
+;	     br      #BestWarmStart	     ; to leave LOCKA set - direct address
+
+Part2End:
+
+	.org	0xFFDE			    ; always do this for G2xx3 parts
+	.dw	0			    ; prevent auto mass erase if PW wrong
+
+	.org	RESET_VECTOR
+	.dw	PowerUp
