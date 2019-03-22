@@ -1,0 +1,18 @@
+This version of BSLDEMO2 is intended for use with generic USB-to-UART
+adapters such as the FT232, CP2102 and CH340.  In the official TI
+BSLDEMO2, the polarity of the DTR line is wrong when used with such
+adapters.  In addition, the polarity of RTS is wrong if the target
+MSP430 device has dedicated JTAG pins (i.e. - if it has a TCK pin
+instead of a TEST pin).
+
+This modified BSLDEMO has two added options for the command line:
+
+-i   Invert the polarity of DTR.  Always include when using adapters.
+
+-j   Invert the polarity of RTS.  Include if RTS connects to TCK.
+
+If you type BSLDEMO-2.01C.exe -h on the command line, these new options
+will appear in the help screen list.
+
+Information on the BSL hardware invocation sequences on /Reset and TEST
+(or TCK) is included in TI's SLAU319.pdf.
