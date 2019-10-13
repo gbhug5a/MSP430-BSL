@@ -1,3 +1,11 @@
+
+NOTE:  Texas Instruments has now modified BSLDEMO to support the use of
+generic USB-to-Serial adapters.  The new version is found in the DEPRECATED
+folder of the BSL-Scripter installer, v3.4.0.2, with file dates of 9/26/19.
+A new "-t" (for Tool) option has been added, with "-tUSB" used for generic
+adapters. Since official signed TI software can now be used, the revised
+version of BSLDEMO included in this repo is no longer needed.
+
 NOTE:  In August, 2018, this project was reworked to make everything work
 with a wider range of MSP430G parts.  So what was specifically for the
 G2553 now works for G2xx3 parts.  And G2231 is now G2xx1 and Gxx2 parts,
@@ -32,7 +40,8 @@ without knowing the password.
 
 2. A recompiled version of TI's BSLDEMO2.exe with a new option to set the
 DTR line to the correct polarity when used with currently available USB-to-
-Serial adapters, such as the FT232RL, CP2102, and CH340G.
+Serial adapters, such as the FT232RL, CP2102, and CH340G. [No longer needed -
+see NOTE above.]
 
 3. A VBS script for Windows that converts IntelHEX files to TI-TXT format (
 16-bit only) as required for BSLDEMO2.
