@@ -8,7 +8,7 @@ version of BSLDEMO included in this repo is no longer needed.
 
 NOTE:  In August, 2018, this project was reworked to make everything work
 with a wider range of MSP430G parts.  So what was specifically for the
-G2553 now works for G2xx3 parts.  And G2231 is now G2xx1 and Gxx2 parts,
+G2553 now works for G2xx3 parts.  And G2231 is now G2xx1 and G2xx2 parts,
 referred to here collectively as "G2xx12".
 
 
@@ -34,7 +34,7 @@ parts, and circuit design options to be considered.
 Additional software files include:
 
 1. Alternate BSL entry code for G2xx3 parts which avoids the need for the
-special signalling pattern on Test and /Reset, and which can be configured
+special signaling pattern on Test and /Reset, and which can be configured
 to allow BSL to run with LOCKA set, so firmware can be flashed to MAIN
 without knowing the password.
 
@@ -54,7 +54,7 @@ applications.
 5. A new Windows console program that functions as the master for the
 G2xx12 custom BSL process (the equivalent of BSLDEMO.exe).
 
-6. An examnple of using an intermediate jump table for the G2553 interrupt
+6. An example of using an intermediate jump table for the G2553 interrupt
 vectors, which allows the BSL password to remain unchanged for all firmware
 versions of a project.
 
